@@ -8,7 +8,7 @@
     <meta name="theme-color" content="#1e1e24">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* カスタムスクロールバーと非表示設定 */
+        /* カスタムスクロールバー非表示設定 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
@@ -28,18 +28,39 @@
     </aside>
 
     <main class="flex-1 flex flex-col h-full relative">
-        <header class="p-4 flex justify-between items-center border-b border-[#282a36] md:border-none">
-            <span class="text-lg font-medium md:text-xl">WebLLM Chat</span>
-            <div id="status" class="text-sm bg-[#282a36] px-3 py-1 rounded-full text-gray-400">
+        <header class="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#282a36] gap-3">
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <span class="text-lg font-medium hidden sm:inline">Model:</span>
+                <select id="model-select" class="bg-[#1e1e24] text-white text-sm rounded-xl p-2 border border-gray-600 focus:outline-none w-full sm:w-72 cursor-pointer">
+                    <optgroup label="Qwen (日本語最適・おすすめ)">
+                        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-1.5B [4bit] (軽量・快適)</option>
+                        <option value="Qwen2.5-7B-Instruct-q4f16_1-MLC">Qwen2.5-7B [4bit] (高精度・PC用)</option>
+                        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-0.5B [4bit] (超軽量・スマホ用)</option>
+                    </optgroup>
+                    <optgroup label="Gemma 2 (Google・Geminiの系譜)">
+                        <option value="gemma-2-2b-it-q4f16_1-MLC">Gemma-2-2B [4bit] (バランス良)</option>
+                        <option value="gemma-2-9b-it-q4f16_1-MLC">Gemma-2-9B [4bit] (高性能)</option>
+                    </optgroup>
+                    <optgroup label="Llama 3.2 / 3.1 (Meta標準モデル)">
+                        <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama-3.2-3B [4bit]</option>
+                        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B [4bit]</option>
+                        <option value="Llama-3.1-8B-Instruct-q4f16_1-MLC">Llama-3.1-8B [4bit]</option>
+                    </optgroup>
+                    <optgroup label="Phi 3.5 (Microsoft軽量モデル)">
+                        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5-Mini [4bit]</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div id="status" class="text-xs bg-[#282a36] px-3 py-1.5 rounded-full text-gray-400 max-w-full truncate">
                 AI初期化中...
             </div>
         </header>
 
         <div id="chat-container" class="flex-1 overflow-y-auto p-4 md:px-24 space-y-6 no-scrollbar pb-32">
             <div class="flex gap-4 items-start">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0 flex items-center justify-center text-xs font-bold">AI</div>
+                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0 flex items-center justify-center text-xs font-bold text-white">AI</div>
                 <div class="space-y-2 max-w-[85%]">
-                    <p class="text-gray-200 leading-relaxed">こんにちは！ブラウザローカルで動くAIチャットです。何かお手伝いできることはありますか？</p>
+                    <p class="text-gray-200 leading-relaxed">こんにちは！ブラウザ上のローカル環境で完結するAIチャットです。上のメニューからモデルを変更することもできます。何か質問はありますか？</p>
                 </div>
             </div>
         </div>
@@ -48,7 +69,7 @@
             <div class="max-w-4xl mx-auto bg-[#1e1e24] rounded-3xl p-2 flex items-center border border-transparent focus-within:border-[#4b5563] transition shadow-lg">
                 <input type="text" id="user-input" disabled
                     class="flex-1 bg-transparent px-4 py-2 text-white placeholder-gray-500 focus:outline-none text-base w-full" 
-                    placeholder="ここにプロンプトを入力してください"
+                    placeholder="モデルのロード完了までお待ちください..."
                     onkeypress="if(event.key === 'Enter') sendMessage()">
                 <button id="send-btn" onclick="sendMessage()" disabled
                     class="bg-[#2f303a] hover:bg-[#3e3f4d] disabled:opacity-40 text-white w-10 h-10 rounded-full flex items-center justify-center transition flex-shrink-0">
@@ -56,7 +77,7 @@
                 </button>
             </div>
             <p class="text-[11px] text-center text-gray-500 mt-2">
-                WebLLMはモデルをブラウザのキャッシュに保存します。初回はダウンロードに時間がかかります。
+                初回のみ数十MB〜数GBのモデルダウンロードが発生します（ブラウザに自動キャッシュされます）。
             </p>
         </div>
     </main>
@@ -64,22 +85,31 @@
     <script type="module">
         import * as webllm from "https://esm.run/@mlc-ai/web-llm";
 
-        // 軽量で日本語が比較的得意なモデル（Llama-3-8B もしくは Qwen2-1.5B などがおすすめ）
-        const selectedModel = "Qwen2-1.5B-Instruct-q4f16_1-MLC"; 
-        
-        let engine;
+        let engine = null;
         const chatContainer = document.getElementById('chat-container');
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
         const statusDiv = document.getElementById('status');
+        const modelSelect = document.getElementById('model-select');
 
-        // チャット履歴管理
-        const messages = [];
+        let messages = [];
 
-        async function initChat() {
+        // チャットエンジンの初期化
+        async function initChat(modelName) {
+            // UIを一時的にロック
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+            userInput.placeholder = "モデルを読み込み中...";
+            
             try {
-                engine = new webllm.CreateMLCEngine(
-                    selectedModel,
+                // 既存のエンジンがある場合は一旦破棄
+                if (engine) {
+                    const activeEngine = await engine;
+                    if (activeEngine.unload) await activeEngine.unload();
+                }
+
+                engine = webllm.CreateMLCEngine(
+                    modelName,
                     {
                         initProgressCallback: (report) => {
                             statusDiv.innerText = report.text; // ダウンロード進捗を表示
@@ -87,50 +117,57 @@
                     }
                 );
                 
+                await engine; // インスタンス完了を待つ
                 statusDiv.innerText = "準備完了 (ローカル動作中)";
                 userInput.disabled = false;
                 sendBtn.disabled = false;
+                userInput.placeholder = "ここにプロンプトを入力してください";
+                userInput.focus();
             } catch (error) {
-                statusDiv.innerText = "初期化エラー";
+                statusDiv.innerText = "初期化エラー (WebGPU未対応の可能性)";
+                userInput.placeholder = "起動できませんでした";
                 console.error(error);
             }
         }
 
-        // メッセージ送信処理
+        // モデル切り替えイベント
+        modelSelect.addEventListener('change', (e) => {
+            initChat(e.target.value);
+        });
+
+        // メッセージ送信
         window.sendMessage = async function() {
             const text = userInput.value.trim();
-            if (!text) return;
+            if (!text || !engine) return;
 
-            // 画面入力のリセット
             userInput.value = "";
             userInput.disabled = true;
             sendBtn.disabled = true;
 
-            // ユーザーメッセージの描画
             appendMessage(text, 'user');
             messages.push({ role: "user", content: text });
 
-            // AIメッセージ用プレースホルダーの作成
             const aiMessageId = appendMessage("思考中...", 'ai');
             const aiMessageElement = document.getElementById(aiMessageId);
 
             try {
                 let aiResponse = "";
-                const completion = await (await engine).chat.completions.create({
+                const activeEngine = await engine;
+                const completion = await activeEngine.chat.completions.create({
                     messages: messages,
-                    stream: true // ストリーミング再生
+                    stream: true
                 });
 
                 for await (const chunk of completion) {
                     const delta = chunk.choices[0]?.delta?.content || "";
                     aiResponse += delta;
                     aiMessageElement.innerText = aiResponse;
-                    chatContainer.scrollTop = chatContainer.scrollHeight; // 自動スクロール
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
                 }
 
                 messages.push({ role: "assistant", content: aiResponse });
             } catch (error) {
-                aiMessageElement.innerText = "エラーが発生しました。リロードして試してください。";
+                aiMessageElement.innerText = "エラーが発生しました。モデルサイズが大きすぎるか、VRAM不足の可能性があります。";
                 console.error(error);
             }
 
@@ -139,19 +176,19 @@
             userInput.focus();
         }
 
-        // メッセージを画面に追加するヘルパー
+        // 画面へのメッセージ追加
         function appendMessage(text, sender) {
             const id = 'msg-' + Date.now();
             const isUser = sender === 'user';
             
             const html = isUser ? `
                 <div class="flex gap-4 items-start justify-end">
-                    <div class="bg-[#2f303a] text-gray-100 p-3 rounded-2xl max-w-[85%] leading-relaxed break-words">${text}</div>
+                    <div class="bg-[#2f303a] text-gray-100 p-3 rounded-2xl max-w-[85%] leading-relaxed break-words text-sm md:text-base">${text}</div>
                 </div>
             ` : `
                 <div class="flex gap-4 items-start">
-                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0 flex items-center justify-center text-xs font-bold">AI</div>
-                    <div id="${id}" class="space-y-2 max-w-[85%] text-gray-200 leading-relaxed break-words">${text}</div>
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0 flex items-center justify-center text-xs font-bold text-white">AI</div>
+                    <div id="${id}" class="space-y-2 max-w-[85%] text-gray-200 leading-relaxed break-words text-sm md:text-base">${text}</div>
                 </div>
             `;
             
@@ -160,16 +197,16 @@
             return id;
         }
 
-            // 初期化開始
-            initChat();
+        // 初回起動（デフォルト選択されているモデルで開始）
+        initChat(modelSelect.value);
     </script>
 
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW registered', reg))
-                    .catch(err => console.error('SW registration failed', err));
+                    .then(reg => console.log('SW Registered'))
+                    .catch(err => console.error('SW Registration Failed', err));
             });
         }
     </script>
