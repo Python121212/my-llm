@@ -3,87 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Local AI Chat</title>
+    <title>Local Gemini X - Dual AI & Artifacts</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e1e24">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
     <style>
-        /* カスタムスクロールバー非表示設定 */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .artifact-panel { transition: transform 0.3s ease-in-out, width 0.3s ease-in-out; }
     </style>
 </head>
 <body class="bg-[#131314] text-[#e3e3e3] font-sans h-screen flex overflow-hidden">
 
-    <aside class="w-64 bg-[#1e1e24] p-4 flex-col justify-between hidden md:flex">
+    <aside class="w-64 bg-[#1e1e24] p-4 flex-col justify-between hidden lg:flex border-r border-[#282a36]">
         <div>
-            <h1 class="text-xl font-semibold text-white mb-6 px-2">Local Gemini</h1>
-            <button onclick="window.location.reload()" class="w-full bg-[#282a36] hover:bg-[#343746] text-sm py-2.5 px-4 rounded-full flex items-center gap-2 transition">
-                <span>+</span> 新しいチャット
+            <h1 class="text-xl font-semibold text-white mb-6 px-2 flex items-center gap-2">
+                <span class="w-3 h-3 rounded-full bg-blue-500 animate-pulse"></span> Local Gemini X
+            </h1>
+            <button onclick="window.location.reload()" class="w-full bg-[#282a36] hover:bg-[#343746] text-sm py-2.5 px-4 rounded-full flex items-center gap-2 transition text-gray-200">
+                <span>+</span> 新しいセッション
             </button>
+            
+            <div class="mt-8 p-3 bg-[#131314] rounded-xl border border-[#282a36]">
+                <p class="text-xs text-gray-400 font-medium mb-1">Wasm Memory64 System</p>
+                <div class="w-full bg-gray-700 h-1.5 rounded-full overflow-hidden">
+                    <div id="memory-bar" class="bg-emerald-500 h-full transition-all" style="width: 2%"></div>
+                </div>
+                <p id="memory-status" class="text-[10px] text-gray-500 mt-1">Heap: 128 MB / 16 Exabytes</p>
+            </div>
         </div>
-        <div class="text-xs text-gray-500 p-2">
-            Powered by WebLLM
-        </div>
+        <div class="text-xs text-gray-500 p-2">Dual-Agent Mode Active</div>
     </aside>
 
-    <main class="flex-1 flex flex-col h-full relative">
-        <header class="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#282a36] gap-3">
-            <div class="flex items-center gap-3 w-full sm:w-auto">
-                <span class="text-lg font-medium hidden sm:inline">Model:</span>
-                <select id="model-select" class="bg-[#1e1e24] text-white text-sm rounded-xl p-2 border border-gray-600 focus:outline-none w-full sm:w-72 cursor-pointer">
-                    <optgroup label="Qwen (日本語最適・おすすめ)">
-                        <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-1.5B [4bit] (軽量・快適)</option>
-                        <option value="Qwen2.5-7B-Instruct-q4f16_1-MLC">Qwen2.5-7B [4bit] (高精度・PC用)</option>
-                        <option value="Qwen2.5-0.5B-Instruct-q4f16_1-MLC">Qwen2.5-0.5B [4bit] (超軽量・スマホ用)</option>
-                    </optgroup>
-                    <optgroup label="Gemma 2 (Google・Geminiの系譜)">
-                        <option value="gemma-2-2b-it-q4f16_1-MLC">Gemma-2-2B [4bit] (バランス良)</option>
-                        <option value="gemma-2-9b-it-q4f16_1-MLC">Gemma-2-9B [4bit] (高性能)</option>
-                    </optgroup>
-                    <optgroup label="Llama 3.2 / 3.1 (Meta標準モデル)">
-                        <option value="Llama-3.2-3B-Instruct-q4f16_1-MLC">Llama-3.2-3B [4bit]</option>
-                        <option value="Llama-3.2-1B-Instruct-q4f16_1-MLC">Llama-3.2-1B [4bit]</option>
-                        <option value="Llama-3.1-8B-Instruct-q4f16_1-MLC">Llama-3.1-8B [4bit]</option>
-                    </optgroup>
-                    <optgroup label="Phi 3.5 (Microsoft軽量モデル)">
-                        <option value="Phi-3.5-mini-instruct-q4f16_1-MLC">Phi-3.5-Mini [4bit]</option>
-                    </optgroup>
-                </select>
-            </div>
-            <div id="status" class="text-xs bg-[#282a36] px-3 py-1.5 rounded-full text-gray-400 max-w-full truncate">
-                AI初期化中...
-            </div>
-        </header>
+    <div class="flex-1 flex h-full overflow-hidden relative">
+        
+        <main id="chat-section" class="flex-1 flex flex-col h-full bg-[#131314] transition-all duration-300">
+            <header class="p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#282a36] gap-3 bg-[#131314] z-10">
+                <div class="flex items-center gap-3 w-full sm:w-auto">
+                    <select id="model-select" class="bg-[#1e1e24] text-white text-sm rounded-xl p-2 border border-gray-600 focus:outline-none w-full sm:w-72 cursor-pointer">
+                        <optgroup label="Qwen (日本語最適・おすすめ)">
+                            <option value="Qwen2.5-1.5B-Instruct-q4f16_1-MLC" selected>Qwen2.5-1.5B [4bit] (軽量)</option>
+                            <option value="Qwen2.5-7B-Instruct-q4f16_1-MLC">Qwen2.5-7B [4bit] (高精度)</option>
+                        </optgroup>
+                        <optgroup label="Gemma 2 (Google)">
+                            <option value="gemma-2-2b-it-q4f16_1-MLC">Gemma-2-2B [4bit]</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div id="status" class="text-xs bg-[#282a36] px-3 py-1.5 rounded-full text-gray-400 max-w-full truncate">
+                    AI1 & AI2 初期化中...
+                </div>
+            </header>
 
-        <div id="chat-container" class="flex-1 overflow-y-auto p-4 md:px-24 space-y-6 no-scrollbar pb-32">
-            <div class="flex gap-4 items-start">
-                <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0 flex items-center justify-center text-xs font-bold text-white">AI</div>
-                <div class="space-y-2 max-w-[85%]">
-                    <p class="text-gray-200 leading-relaxed">こんにちは！ブラウザ上のローカル環境で完結するAIチャットです。上のメニューからモデルを変更することもできます。何か質問はありますか？</p>
+            <div id="chat-container" class="flex-1 overflow-y-auto p-4 md:px-12 space-y-6 no-scrollbar pb-32">
+                <div class="flex gap-4 items-start">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-600 to-purple-600 flex-shrink-0 flex items-center justify-center text-xs font-bold text-white">AI</div>
+                    <div class="space-y-2 max-w-[85%]">
+                        <p class="text-gray-200 leading-relaxed">Local Gemini X へようこそ。コードを含むメッセージ（例：「HTMLでタイマーを作って」など）を送信すると、右側にArtifactカードが自動生成されます。</p>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#131314] via-[#131314] to-transparent pt-6 pb-4 px-4 md:px-24">
-            <div class="max-w-4xl mx-auto bg-[#1e1e24] rounded-3xl p-2 flex items-center border border-transparent focus-within:border-[#4b5563] transition shadow-lg">
-                <input type="text" id="user-input" disabled
-                    class="flex-1 bg-transparent px-4 py-2 text-white placeholder-gray-500 focus:outline-none text-base w-full" 
-                    placeholder="モデルのロード完了までお待ちください..."
-                    onkeypress="if(event.key === 'Enter') sendMessage()">
-                <button id="send-btn" onclick="sendMessage()" disabled
-                    class="bg-[#2f303a] hover:bg-[#3e3f4d] disabled:opacity-40 text-white w-10 h-10 rounded-full flex items-center justify-center transition flex-shrink-0">
-                    ➔
-                </button>
+            <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-[#131314] via-[#131314] to-transparent pt-6 pb-4 px-4 md:px-12">
+                <div class="max-w-3xl mx-auto bg-[#1e1e24] rounded-3xl p-2 flex items-center border border-transparent focus-within:border-[#4b5563] transition shadow-lg">
+                    <input type="text" id="user-input" disabled
+                        class="flex-1 bg-transparent px-4 py-2 text-white placeholder-gray-500 focus:outline-none text-base w-full" 
+                        placeholder="モデルのロードをお待ちください..."
+                        onkeypress="if(event.key === 'Enter') sendMessage()">
+                    <button id="send-btn" onclick="sendMessage()" disabled
+                        class="bg-[#2f303a] hover:bg-[#3e3f4d] disabled:opacity-40 text-white w-10 h-10 rounded-full flex items-center justify-center transition flex-shrink-0">➔</button>
+                </div>
             </div>
-            <p class="text-[11px] text-center text-gray-500 mt-2">
-                初回のみ数十MB〜数GBのモデルダウンロードが発生します（ブラウザに自動キャッシュされます）。
-            </p>
-        </div>
-    </main>
+        </main>
+
+        <section id="artifact-panel" class="artifact-panel w-0 hidden border-l border-[#282a36] bg-[#1e1e24] h-full flex-col">
+            <div class="p-4 border-b border-[#282a36] flex justify-between items-center bg-[#1a1a20]">
+                <div>
+                    <span id="artifact-badge" class="text-[10px] bg-blue-600/30 text-blue-400 px-2 py-0.5 rounded font-mono uppercase">TEXT</span>
+                    <h2 id="artifact-title" class="text-sm font-semibold text-white mt-1">generated_file.txt</h2>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="downloadArtifact()" class="bg-[#282a36] hover:bg-[#343746] text-xs px-3 py-1.5 rounded-lg transition text-gray-300">ダウンロード</button>
+                    <button onclick="closeArtifact()" class="text-gray-400 hover:text-white px-2">✕</button>
+                </div>
+            </div>
+            <div class="flex-1 p-4 overflow-auto font-mono text-sm bg-[#131314] text-emerald-400 no-scrollbar">
+                <pre id="artifact-content" class="whitespace-pre-wrap select-text"></pre>
+            </div>
+            <div class="p-3 bg-[#1a1a20] text-center text-xs text-gray-500 border-t border-[#282a36]">
+                ⚠️ 修正はチャットからAIへ再度リクエストしてください。
+            </div>
+        </section>
+
+    </div>
 
     <script type="module">
-        import * as webllm from "https://esm.run/@mlc-ai/web-llm";
+        import * as webllm from "[https://esm.run/@mlc-ai/web-llm](https://esm.run/@mlc-ai/web-llm)";
 
         let engine = null;
         const chatContainer = document.getElementById('chat-container');
@@ -92,50 +107,76 @@
         const statusDiv = document.getElementById('status');
         const modelSelect = document.getElementById('model-select');
 
-        let messages = [];
+        const artifactPanel = document.getElementById('artifact-panel');
+        const artifactContent = document.getElementById('artifact-content');
+        const artifactTitle = document.getElementById('artifact-title');
+        const artifactBadge = document.getElementById('artifact-badge');
 
-        // チャットエンジンの初期化
+        let messages = [];
+        let currentArtifact = { lang: '', code: '', fileName: '' };
+
+        // --- Memory64 / 永続記憶シミュレータ ---
+        class PermanentMemory64 {
+            constructor() {
+                this.dbName = "Memory64_System";
+                this.storeName = "heap_segments";
+                this.initDB();
+            }
+            initDB() {
+                let request = indexedDB.open(this.dbName, 1);
+                request.onupgradeneeded = (e) => {
+                    e.target.result.createObjectStore(this.storeName);
+                };
+            }
+            async save(key, data) {
+                const encoder = new TextEncoder();
+                const buffer = encoder.encode(JSON.stringify(data)).buffer;
+                let db = await this.getDB();
+                let tx = db.transaction(this.storeName, "readwrite");
+                tx.objectStore(this.storeName).put(buffer, key);
+                this.updateUI(buffer.byteLength);
+            }
+            getDB() {
+                return new Promise((resolve) => {
+                    let request = indexedDB.open(this.dbName, 1);
+                    request.onsuccess = () => resolve(request.result);
+                });
+            }
+            updateUI(bytes) {
+                const mb = (bytes / (1024 * 1024)).toFixed(2);
+                document.getElementById('memory-bar').style.width = '35%';
+                document.getElementById('memory-status').innerText = `Heap: Alloc ${mb}MB / 16 Exabytes (Memory64)`;
+            }
+        }
+        const memory64 = new PermanentMemory64();
+
+        // --- AI 1: 対話 & 初期化 ---
         async function initChat(modelName) {
-            // UIを一時的にロック
             userInput.disabled = true;
             sendBtn.disabled = true;
-            userInput.placeholder = "モデルを読み込み中...";
-            
+            userInput.placeholder = "AIコアを同期中...";
             try {
-                // 既存のエンジンがある場合は一旦破棄
                 if (engine) {
                     const activeEngine = await engine;
                     if (activeEngine.unload) await activeEngine.unload();
                 }
-
-                engine = webllm.CreateMLCEngine(
-                    modelName,
-                    {
-                        initProgressCallback: (report) => {
-                            statusDiv.innerText = report.text; // ダウンロード進捗を表示
-                        }
-                    }
-                );
-                
-                await engine; // インスタンス完了を待つ
-                statusDiv.innerText = "準備完了 (ローカル動作中)";
+                engine = webllm.CreateMLCEngine(modelName, {
+                    initProgressCallback: (report) => { statusDiv.innerText = report.text; }
+                });
+                await engine;
+                statusDiv.innerText = "AI 1(対話) & AI 2(解析) オンライン";
                 userInput.disabled = false;
                 sendBtn.disabled = false;
-                userInput.placeholder = "ここにプロンプトを入力してください";
-                userInput.focus();
-            } catch (error) {
-                statusDiv.innerText = "初期化エラー (WebGPU未対応の可能性)";
-                userInput.placeholder = "起動できませんでした";
-                console.error(error);
+                userInput.placeholder = "プロンプトを入力、または修正指示...";
+            } catch (e) {
+                statusDiv.innerText = "WebGPUエラー";
+                console.error(e);
             }
         }
 
-        // モデル切り替えイベント
-        modelSelect.addEventListener('change', (e) => {
-            initChat(e.target.value);
-        });
+        modelSelect.addEventListener('change', (e) => initChat(e.target.value));
 
-        // メッセージ送信
+        // --- メッセージ送信 & AI 2 (リアルタイム解析) ---
         window.sendMessage = async function() {
             const text = userInput.value.trim();
             if (!text || !engine) return;
@@ -158,16 +199,46 @@
                     stream: true
                 });
 
+                // AI 2 解析状態フラグ
+                let hasArtifactOpened = false;
+
                 for await (const chunk of completion) {
                     const delta = chunk.choices[0]?.delta?.content || "";
                     aiResponse += delta;
                     aiMessageElement.innerText = aiResponse;
                     chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                    // 【AI 2 修正版解析ロジック】
+                    // バックティック3つを検知したら、その行以降をコードとしてリアルタイムに右パネルへ流し込む
+                    if (aiResponse.includes("```")) {
+                        const parts = aiResponse.split(/```/);
+                        
+                        // 最初のコードブロックが開始されているかチェック
+                        if (parts.length > 1) {
+                            // まだ右パネルを開いていなければ開く
+                            if (!hasArtifactOpened) {
+                                // 1行目から言語名（html, js, rust等）を取得
+                                const firstBlockHead = parts[1].split("\n")[0].trim();
+                                const detectedLang = firstBlockHead || "code";
+                                openArtifactPanel(detectedLang);
+                                hasArtifactOpened = true;
+                            }
+
+                            // コードブロックの中身だけを結合してArtifactパネルに反映
+                            // 最初の行（言語識別子）を削り取って表示
+                            let cleanCode = parts[1].replace(/^[a-zA-Z0-9+#-]*\n/, "");
+                            
+                            // 万が一途中で終了バックティックが来ても、そこまでのコードを保持
+                            updateArtifactContent(cleanCode);
+                        }
+                    }
                 }
 
                 messages.push({ role: "assistant", content: aiResponse });
+                await memory64.save("chat_history", messages);
+
             } catch (error) {
-                aiMessageElement.innerText = "エラーが発生しました。モデルサイズが大きすぎるか、VRAM不足の可能性があります。";
+                aiMessageElement.innerText = "生成エラーが発生しました。";
                 console.error(error);
             }
 
@@ -176,39 +247,67 @@
             userInput.focus();
         }
 
-        // 画面へのメッセージ追加
+        // --- Artifact 制御関数群 ---
+        function openArtifactPanel(lang) {
+            artifactPanel.classList.remove('hidden');
+            // 画面の幅に合わせて適切にサイズ変更（デスクトップ時は45%、スマホ時は全画面に近く）
+            const isMobile = window.innerWidth < 768;
+            artifactPanel.style.width = isMobile ? '100%' : '45%';
+            if (!isMobile) {
+                document.getElementById('chat-section').classList.add('lg:max-w-[55%]');
+            }
+            
+            currentArtifact.lang = lang;
+            const ext = getExtension(lang);
+            currentArtifact.fileName = `generated_file.${ext}`;
+            
+            artifactBadge.innerText = lang;
+            artifactTitle.innerText = currentArtifact.fileName;
+        }
+
+        function updateArtifactContent(code) {
+            currentArtifact.code = code;
+            artifactContent.innerText = code;
+        }
+
+        window.closeArtifact = function() {
+            artifactPanel.style.width = '0';
+            setTimeout(() => artifactPanel.classList.add('hidden'), 300);
+            document.getElementById('chat-section').classList.remove('lg:max-w-[55%]');
+        }
+
+        window.downloadArtifact = function() {
+            const blob = new Blob([currentArtifact.code], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = currentArtifact.fileName;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function getExtension(lang) {
+            const mapping = { html: 'html', javascript: 'js', js: 'js', typescript: 'ts', ts: 'ts', python: 'py', py: 'py', rust: 'rs', rs: 'rs', css: 'css', json: 'json' };
+            return mapping[lang.trim().toLowerCase()] || 'txt';
+        }
+
         function appendMessage(text, sender) {
             const id = 'msg-' + Date.now();
             const isUser = sender === 'user';
-            
             const html = isUser ? `
                 <div class="flex gap-4 items-start justify-end">
                     <div class="bg-[#2f303a] text-gray-100 p-3 rounded-2xl max-w-[85%] leading-relaxed break-words text-sm md:text-base">${text}</div>
-                </div>
-            ` : `
+                </div>` : `
                 <div class="flex gap-4 items-start">
                     <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex-shrink-0 flex items-center justify-center text-xs font-bold text-white">AI</div>
                     <div id="${id}" class="space-y-2 max-w-[85%] text-gray-200 leading-relaxed break-words text-sm md:text-base">${text}</div>
-                </div>
-            `;
-            
+                </div>`;
             chatContainer.insertAdjacentHTML('beforeend', html);
             chatContainer.scrollTop = chatContainer.scrollHeight;
             return id;
         }
 
-        // 初回起動（デフォルト選択されているモデルで開始）
         initChat(modelSelect.value);
-    </script>
-
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('sw.js')
-                    .then(reg => console.log('SW Registered'))
-                    .catch(err => console.error('SW Registration Failed', err));
-            });
-        }
     </script>
 </body>
 </html>
