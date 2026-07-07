@@ -1,0 +1,16 @@
+{
+  "name": "Local Gemini Chat",
+  "short_name": "LocalAI",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#131314",
+  "theme-color": "#1e1e24",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/1693/1693746.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
